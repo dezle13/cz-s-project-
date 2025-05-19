@@ -57,51 +57,91 @@ public class WarnServiceImpl implements WarnService {
         ObjectMapper objectMapper = new ObjectMapper();
         //获取规则，1：warnId + BatteryType -> WarnRule 这一部分可以使用缓存
         for(SignalDto signalDto: signalDtoList){
-
+            //使用UUID保存所需要的东西
+            String UUID = String.valueOf("CarIdAndWarnId:"+ signalDto.getCarId() +signalDto.getWarnId());
             String UUID2 = String.valueOf("CarId:"+ signalDto.getCarId());
             String UUID3 = String.valueOf("WarnId:"+signalDto.getWarnId());
             String batteryType;
-            if(redisTemplate.hasKey(UUID2)){
-                batteryType = (String) redisTemplate.opsForValue().get(UUID2);
-            }else {
-                batteryType = carDomainService.getBatteryTypeByCarId(signalDto.getCarId());
-                redisTemplate.opsForValue().set(UUID2, batteryType);
-            }
-            String UUID1 = String.valueOf("batteryTypeAndWarnId:"+ batteryType+signalDto.getWarnId());
             TreeMap<Double,Integer>  warnRule = new TreeMap<>();
-            if(redisTemplate.hasKey(UUID1)){
-                String jsonStr = (String) redisTemplate.opsForValue().get(UUID1);
+            String warnName;
+            if(redisTemplate.hasKey(UUID)){
+                batteryType = (String) redisTemplate.opsForZSet().rangeByScore(UUID,1,1).stream()
+                        .findFirst().orElseThrow(() -> new RuntimeException("No member found"));
+
+                String jsonStr = (String) redisTemplate.opsForZSet().rangeByScore(UUID,2,2).stream()
+                        .findFirst().orElseThrow(() -> new RuntimeException("No member found"));
                 try {
                     warnRule = objectMapper.readValue(jsonStr, new TypeReference<TreeMap<Double, Integer>>() {});
                 } catch (Exception e) {
                     throw new RuntimeException("Failed to parse JSON", e);
                 }
+
+                warnName = (String) redisTemplate.opsForZSet().rangeByScore(UUID,3,3).stream()
+                        .findFirst().orElseThrow(() -> new RuntimeException("No member found"));
             }else {
+                //电池名称
+                batteryType = carDomainService.getBatteryTypeByCarId(signalDto.getCarId());
+                redisTemplate.opsForZSet().add(UUID,batteryType,1);
+                //规则
                 warnRule = ruleDomainService
                         .getWarnRuleByWarnIdAndBatT(signalDto.getWarnId(),
                                 batteryType
                         );
-                // 存储数据到 Redis
                 try {
                     String jsonStr = objectMapper.writeValueAsString(warnRule);
-                    redisTemplate.opsForValue().set(UUID1, jsonStr);
+                    redisTemplate.opsForZSet().add(UUID,jsonStr,2);
                 } catch (JsonProcessingException e) {
                     throw new RuntimeException(e);
                 }
-            }
+                //warn名称
+                warnName = ruleDomainService.getWarnNameByWarnId(signalDto.getWarnId());
+                redisTemplate.opsForZSet().add(UUID,warnName,3);
 
 
-            String WarnName;
-            if(redisTemplate.hasKey(UUID3)){
-                WarnName = (String) redisTemplate.opsForValue().get(UUID3);
-            }else {
-                WarnName = ruleDomainService.getWarnNameByWarnId(signalDto.getWarnId());
-                redisTemplate.opsForValue().set(UUID3 ,WarnName);
             }
+
+//
+//            if(redisTemplate.hasKey(UUID2)){
+//                batteryType = (String) redisTemplate.opsForValue().get(UUID2);
+//            }else {
+//                batteryType = carDomainService.getBatteryTypeByCarId(signalDto.getCarId());
+//                redisTemplate.opsForValue().set(UUID2, batteryType);
+//            }
+//            String UUID1 = String.valueOf("batteryTypeAndWarnId:"+ batteryType+signalDto.getWarnId());
+////            TreeMap<Double,Integer>  warnRule = new TreeMap<>();
+//            if(redisTemplate.hasKey(UUID1)){
+//                String jsonStr = (String) redisTemplate.opsForValue().get(UUID1);
+//                try {
+//                    warnRule = objectMapper.readValue(jsonStr, new TypeReference<TreeMap<Double, Integer>>() {});
+//                } catch (Exception e) {
+//                    throw new RuntimeException("Failed to parse JSON", e);
+//                }
+//            }else {
+//                warnRule = ruleDomainService
+//                        .getWarnRuleByWarnIdAndBatT(signalDto.getWarnId(),
+//                                batteryType
+//                        );
+//                // 存储数据到 Redis
+//                try {
+//                    String jsonStr = objectMapper.writeValueAsString(warnRule);
+//                    redisTemplate.opsForValue().set(UUID1, jsonStr);
+//                } catch (JsonProcessingException e) {
+//                    throw new RuntimeException(e);
+//                }
+//            }
+//
+//
+//            String WarnName;
+//            if(redisTemplate.hasKey(UUID3)){
+//                WarnName = (String) redisTemplate.opsForValue().get(UUID3);
+//            }else {
+//                WarnName = ruleDomainService.getWarnNameByWarnId(signalDto.getWarnId());
+//                redisTemplate.opsForValue().set(UUID3 ,WarnName);
+//            }
 
 
             warnDtoList.add(warnDomainService.processSignal(signalDto.getCarId(),
-                    batteryType,WarnName,
+                    batteryType,warnName,
                     signalDto.getSignal(),warnRule));
         }
 
