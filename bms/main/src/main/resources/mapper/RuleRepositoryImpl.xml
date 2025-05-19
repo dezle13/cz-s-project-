@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.bms.main.infrastructure.repository.RuleRepository">
+
+    <select id="findById" resultType="com.example.bms.main.infrastructure.pojo.RulePojo">
+        SELECT *
+        FROM rule
+        <where>
+            <if test="id != null and id != ''">
+                id = #{id}
+            </if>
+        </where>
+    </select>
+
+    <update id="update">
+        UPDATE rule
+        <set>
+            <if test="warnId != null and warnId != ''">
+                warn_id = #{warnId},
+            </if>
+            <if test="warnName != null and warnName != ''">
+                warn_name = #{warnName},
+            </if>
+            <if test="batteryType != null and batteryType != ''">
+                battery_type = #{batteryType},
+            </if>
+            <if test="warnRule != null and warnRule != ''">
+                warn_rule = #{warnRule},
+            </if>
+        </set>
+        Where id = #{id};
+    </update>
+
+
+</mapper>

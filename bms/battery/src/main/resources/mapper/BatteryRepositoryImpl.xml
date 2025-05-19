@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.bms.battery.infrastructure.repository.BatteryRepository">
+    
+    <select id="findById" resultType="com.example.bms.battery.infrastructure.pojo.BatteryPojo">
+        SELECT *
+        FROM battery
+        <where>
+            <if test="carId != null  ">
+                car_id = #{carId}
+            </if>
+        </where>
+    </select>
+
+    <update id="update">
+        UPDATE battery
+        <set>
+            <if test="warnId != null and warnId != ''">
+                warn_id = #{warnId},
+            </if>
+            <if test="mx != null and mx != ''">
+                mx = #{mx},
+            </if>
+            <if test="mi != null and mi != ''">
+                mi = #{mi},
+            </if>
+            <if test="ix != null and ix != ''">
+                ix = #{ix},
+            </if>
+            <if test="ii != null and ii != ''">
+                ii = #{ii},
+            </if>
+        </set>
+        Where car_id = #{carId};
+    </update>
+
+
+</mapper>

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.bms.main.infrastructure.repository.CarRepository">
+
+    <resultMap id="carResultMap" type="com.example.bms.main.infrastructure.pojo.CarPojo">
+        <id property="id" column="id" jdbcType="BIGINT"/>
+        <result property="vid" column="vid" jdbcType="VARCHAR"/>
+        <result property="carId" column="car_id" jdbcType="BIGINT"/>
+        <result property="batteryType" column="battery_type" jdbcType="VARCHAR"/>
+        <result property="totalMileage" column="total_mileage" jdbcType="BIGINT"/>
+        <result property="batteryStatus" column="battery_status" jdbcType="INTEGER"/>
+        <result property="createTime" column="create_time" jdbcType="BIGINT"/>
+        <result property="createUser" column="create_user" jdbcType="VARCHAR"/>
+        <result property="updateTime" column="update_time" jdbcType="BIGINT"/>
+        <result property="updateUser" column="update_user" jdbcType="VARCHAR"/>
+
+    </resultMap>
+    <select id="findByVid" resultType="com.example.bms.main.infrastructure.pojo.CarPojo">
+        SELECT *
+        FROM car
+        <where>
+            <if test="vid != null and vid != ''">
+                vid = #{vid}
+            </if>
+        </where>
+    </select>
+
+    <update id="update">
+        UPDATE car
+        <set>
+            <if test="carId != null and carId != ''">
+                car_id = #{carId},
+            </if>
+            <if test="batteryType != null and batteryType != ''">
+                battery_type = #{batteryType},
+            </if>
+            <if test="totalMileage != null and totalMileage != ''">
+                total_mileage = #{totalMileage},
+            </if>
+            <if test="batteryStatus != null and batteryStatus != ''">
+                battery_status = #{batteryStatus},
+            </if>
+            <if test="batteryType != null and batteryType != ''">
+                battery_type = #{batteryType},
+            </if>
+        </set>
+        Where vid = #{vid};
+    </update>
+
+
+</mapper>
