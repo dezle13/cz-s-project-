@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import javax.annotation.Resource;
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * signalDtoList包含待处理的数据，这时候应该将之匹配到map中，以Key分类处理
@@ -35,128 +36,154 @@ public class WarnServiceImpl implements WarnService {
     @Resource
     private WarnDomainService warnDomainService;
 
-    @Override
-    public List<WarnDto> processSignalDtoList(List<SignalDto> signalRequestDtoList) {
-
-        List<SignalDto> signalDtoList = new ArrayList<>();
-        List<WarnDto> warnDtoList = new ArrayList<>();
-
-        for(SignalDto signalDto : signalRequestDtoList){
-            //处理为warnId为空值的Signal
-            if(signalDto.getWarnId() == null){
-                List<Map<String,Double>> subSignals = splitMapByTwo(signalDto.getSignal());
-                for(int warnNameInex = 1;warnNameInex <=2 ;warnNameInex++){
-                    SignalDto signalDtoSetWarnName = new SignalDto(signalDto.getCarId(),
-                            warnNameInex,
-                            subSignals.get(warnNameInex-1));
-                    signalDtoList.add(signalDtoSetWarnName);
-                }
-            }else{
-                signalDtoList.add(signalDto);
-            }}
-        ObjectMapper objectMapper = new ObjectMapper();
-        //获取规则，1：warnId + BatteryType -> WarnRule 这一部分可以使用缓存
-        for(SignalDto signalDto: signalDtoList){
-            //使用UUID保存所需要的东西
-            String UUID = String.valueOf("CarIdAndWarnId:"+ signalDto.getCarId() +signalDto.getWarnId());
-            String UUID2 = String.valueOf("CarId:"+ signalDto.getCarId());
-            String UUID3 = String.valueOf("WarnId:"+signalDto.getWarnId());
-            String batteryType;
-            TreeMap<Double,Integer>  warnRule = new TreeMap<>();
-            String warnName;
-            if(redisTemplate.hasKey(UUID)){
-                batteryType = (String) redisTemplate.opsForZSet().rangeByScore(UUID,1,1).stream()
-                        .findFirst().orElseThrow(() -> new RuntimeException("No member found"));
-
-                String jsonStr = (String) redisTemplate.opsForZSet().rangeByScore(UUID,2,2).stream()
-                        .findFirst().orElseThrow(() -> new RuntimeException("No member found"));
-                try {
-                    warnRule = objectMapper.readValue(jsonStr, new TypeReference<TreeMap<Double, Integer>>() {});
-                } catch (Exception e) {
-                    throw new RuntimeException("Failed to parse JSON", e);
-                }
-
-                warnName = (String) redisTemplate.opsForZSet().rangeByScore(UUID,3,3).stream()
-                        .findFirst().orElseThrow(() -> new RuntimeException("No member found"));
-            }else {
-                //电池名称
-                batteryType = carDomainService.getBatteryTypeByCarId(signalDto.getCarId());
-                redisTemplate.opsForZSet().add(UUID,batteryType,1);
-                //规则
-                warnRule = ruleDomainService
-                        .getWarnRuleByWarnIdAndBatT(signalDto.getWarnId(),
-                                batteryType
-                        );
-                try {
-                    String jsonStr = objectMapper.writeValueAsString(warnRule);
-                    redisTemplate.opsForZSet().add(UUID,jsonStr,2);
-                } catch (JsonProcessingException e) {
-                    throw new RuntimeException(e);
-                }
-                //warn名称
-                warnName = ruleDomainService.getWarnNameByWarnId(signalDto.getWarnId());
-                redisTemplate.opsForZSet().add(UUID,warnName,3);
-
-
-            }
-
+//    @Override
+//    public List<WarnDto> processSignalDtoList(SignalDto signalRequestDto) {
 //
-//            if(redisTemplate.hasKey(UUID2)){
-//                batteryType = (String) redisTemplate.opsForValue().get(UUID2);
-//            }else {
-//                batteryType = carDomainService.getBatteryTypeByCarId(signalDto.getCarId());
-//                redisTemplate.opsForValue().set(UUID2, batteryType);
+//        List<SignalDto> signalDtoList = new ArrayList<>();
+//        List<WarnDto> warnDtoList = new ArrayList<>();
+//
+//            //处理为warnId为空值的Signal
+//        if(signalRequestDto.getWarnId() == null){
+//            List<Map<String,Double>> subSignals = splitMapByTwo(signalRequestDto.getSignal());
+//            for(int warnNameInex = 1;warnNameInex <=2 ;warnNameInex++){
+//                SignalDto signalDtoSetWarnName = new SignalDto(signalRequestDto.getCarId(),
+//                        warnNameInex,
+//                        subSignals.get(warnNameInex-1));
+//                signalDtoList.add(signalDtoSetWarnName);
 //            }
-//            String UUID1 = String.valueOf("batteryTypeAndWarnId:"+ batteryType+signalDto.getWarnId());
-////            TreeMap<Double,Integer>  warnRule = new TreeMap<>();
-//            if(redisTemplate.hasKey(UUID1)){
-//                String jsonStr = (String) redisTemplate.opsForValue().get(UUID1);
+//        }else{
+//            signalDtoList.add(signalRequestDto);
+//        }
+//
+//        ObjectMapper objectMapper = new ObjectMapper();
+//        //获取规则，1：warnId + BatteryType -> WarnRule 这一部分可以使用缓存
+//        for(SignalDto signalDto: signalDtoList){
+//            //使用UUID保存所需要的东西
+//            String UUID = String.valueOf("CarIdAndWarnId:"+ signalDto.getCarId() +signalDto.getWarnId());
+//
+//            String batteryType;
+//            TreeMap<Double,Integer>  warnRule = new TreeMap<>();
+//            String warnName;
+//            if(Boolean.TRUE.equals(redisTemplate.hasKey(UUID))){
+//                batteryType = (String) redisTemplate.opsForHash().get(UUID,"batteryType");
+//                String jsonStr = (String) redisTemplate.opsForHash().get(UUID,"warnRule");
 //                try {
 //                    warnRule = objectMapper.readValue(jsonStr, new TypeReference<TreeMap<Double, Integer>>() {});
 //                } catch (Exception e) {
 //                    throw new RuntimeException("Failed to parse JSON", e);
 //                }
+//                warnName = (String) redisTemplate.opsForHash().get(UUID,"warnName");
+//
 //            }else {
+//                HashMap<String, Object> userMap = new HashMap<>();
+//                //电池名称
+//                batteryType = carDomainService.getBatteryTypeByCarId(signalDto.getCarId());
+////                redisTemplate.opsForZSet().add(UUID,batteryType,1);
+//                userMap.put("batteryType",batteryType);
+//                //规则
 //                warnRule = ruleDomainService
 //                        .getWarnRuleByWarnIdAndBatT(signalDto.getWarnId(),
 //                                batteryType
 //                        );
-//                // 存储数据到 Redis
 //                try {
 //                    String jsonStr = objectMapper.writeValueAsString(warnRule);
-//                    redisTemplate.opsForValue().set(UUID1, jsonStr);
+//                    userMap.put("warnRule",jsonStr);
+////                    redisTemplate.opsForZSet().add(UUID,jsonStr,2);
 //                } catch (JsonProcessingException e) {
 //                    throw new RuntimeException(e);
 //                }
+//                //warn名称
+//                warnName = ruleDomainService.getWarnNameByWarnId(signalDto.getWarnId());
+////                redisTemplate.opsForZSet().add(UUID,warnName,3);
+//
+//                userMap.put("warnName",warnName);
+//
+//                redisTemplate.opsForHash().putAll(UUID,userMap);
 //            }
 //
 //
-//            String WarnName;
-//            if(redisTemplate.hasKey(UUID3)){
-//                WarnName = (String) redisTemplate.opsForValue().get(UUID3);
-//            }else {
-//                WarnName = ruleDomainService.getWarnNameByWarnId(signalDto.getWarnId());
-//                redisTemplate.opsForValue().set(UUID3 ,WarnName);
-//            }
-
-
-            warnDtoList.add(warnDomainService.processSignal(signalDto.getCarId(),
-                    batteryType,warnName,
-                    signalDto.getSignal(),warnRule));
+//            warnDtoList.add(warnDomainService.processSignal(signalDto.getCarId(),
+//                    batteryType,warnName,
+//                    signalDto.getSignal(),warnRule));
+//        }
+//
+////        warnDomainService.saveWarn(warnDtoList);
+//        return warnDtoList;
+//    }
+    private static final ObjectMapper objectMapper = new ObjectMapper();
+    private static final TypeReference<TreeMap<Double, Integer>> WARN_RULE_TYPE =
+            new TypeReference<TreeMap<Double, Integer>>() {};
+    public List<WarnDto> processSignalDtoList(SignalDto signalRequestDto) {
+        List<SignalDto> signalDtoList = new ArrayList<>();
+//        long start1 = System.currentTimeMillis();
+        if (signalRequestDto.getWarnId() == null) {
+            List<Map<String, Double>> subSignals = splitMapByTwo(signalRequestDto.getSignal());
+            for (int warnNameIndex = 1; warnNameIndex <= 2; warnNameIndex++) {
+                SignalDto signalDtoSetWarnName = new SignalDto(signalRequestDto.getCarId(),
+                        warnNameIndex,
+                        subSignals.get(warnNameIndex - 1));
+                signalDtoList.add(signalDtoSetWarnName);
+            }
+        } else {
+            signalDtoList.add(signalRequestDto);
         }
+//        long end1 = System.currentTimeMillis();
+//        long duration = end1 - start1;
+//        System.out.println("处理warnId =null耗时：" + duration + " ms");
 
-//        warnDomainService.saveWarn(warnDtoList);
-
-        return warnDtoList;
+        List<WarnDto> result =  signalDtoList.parallelStream()
+                .map(signalDto -> processSignalDto(signalDto, objectMapper, redisTemplate, carDomainService, ruleDomainService, warnDomainService))
+                .collect(Collectors.toList());
+//        warnDomainService.saveWarn(result);
+        // 并行处理 signalDtoList
+        return result;
     }
 
-//    public static TreeMap<Double,Integer> getTreeFromString(String value){try {
-//        ObjectMapper objectMapper = new ObjectMapper();
-//        return objectMapper.readValue(value, new TypeReference<TreeMap<Double, Integer>>() {});
-//    } catch (
-//            IOException e) {
-//        throw new RuntimeException("Failed to convert String to Map<String, Double>", e);
-//    }}
+    private WarnDto processSignalDto(SignalDto signalDto, ObjectMapper objectMapper, RedisTemplate redisTemplate,
+                                     CarDomainService carDomainService, RuleDomainService ruleDomainService,
+                                     WarnDomainService warnDomainService) {
+        String UUID = "CarIdAndWarnId:" + signalDto.getCarId() + signalDto.getWarnId();
+        String batteryType;
+        TreeMap<Double, Integer> warnRule = new TreeMap<>();
+        String warnName;
+//        long start2 = System.currentTimeMillis();
+        if (Boolean.TRUE.equals(redisTemplate.hasKey(UUID))) {
+            // 一次性获取所有需要的字段
+            List values = redisTemplate.opsForHash().multiGet(
+                    UUID,
+                    Arrays.asList("batteryType", "warnRule", "warnName")
+            );
+
+            batteryType = (String) values.get(0);
+            String jsonStr = (String) values.get(1);
+
+            try {
+                warnRule = objectMapper.readValue(jsonStr, new TypeReference<TreeMap<Double, Integer>>() {});
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to parse JSON", e);
+            }
+
+            warnName = (String) values.get(2);
+        } else {
+            HashMap<String, Object> userMap = new HashMap<>();
+            batteryType = carDomainService.getBatteryTypeByCarId(signalDto.getCarId());
+            userMap.put("batteryType", batteryType);
+            warnRule = ruleDomainService.getWarnRuleByWarnIdAndBatT(signalDto.getWarnId(), batteryType);
+            try {
+                String jsonStr = objectMapper.writeValueAsString(warnRule);
+                userMap.put("warnRule", jsonStr);
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException(e);
+            }
+            warnName = ruleDomainService.getWarnNameByWarnId(signalDto.getWarnId());
+            userMap.put("warnName", warnName);
+            redisTemplate.opsForHash().putAll(UUID, userMap);
+        }
+//        long end2 = System.currentTimeMillis();
+//        long duration = end2 - start2;
+//        System.out.println("读取数据：" + duration + " ms");
+        return warnDomainService.processSignal(signalDto.getCarId(), batteryType, warnName, signalDto.getSignal(), warnRule);
+    }
 
 
     @Override

@@ -10,7 +10,7 @@ import java.util.List;
  * @date 2025/5/18 17:46
  */
 public interface WarnService {
-    List<WarnDto> processSignalDtoList(List<SignalDto> signalDtoList);
+    List<WarnDto> processSignalDtoList(SignalDto signalDtoList);
 
     List<WarnDto> getByCarId(Integer carId);
 }

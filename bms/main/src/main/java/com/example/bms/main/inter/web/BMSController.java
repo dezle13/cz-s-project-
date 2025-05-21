@@ -33,10 +33,10 @@ public class BMSController {
 
     @PostMapping("/warn")
     public ResponseMessage getWarnLevel(@Valid  @RequestBody List<WarnReq> warnReqList) {
-        List<SignalDto> signalDtoList = warnReqList.parallelStream().map(warnVoConverter::toDto).collect(Collectors.toList());
-
-        List<WarnDto> warnDtoList =  warnService.processSignalDtoList(signalDtoList);
-
+//        SignalDto signalDto = warnVoConverter.toDto(warnReq);
+//        List<WarnDto> warnDtoList = warnService.processSignalDtoList(signalDto);
+        List<WarnDto> warnDtoList = warnReqList.parallelStream().map(warnVoConverter::toDto)
+                .flatMap(x -> warnService.processSignalDtoList(x).stream()).collect(Collectors.toList());
         List<WarnVo> warnVoList = warnDtoList.parallelStream().map(warnVoConverter::toVo).collect(Collectors.toList());
 
         return ResponseMessage.success(warnVoList);

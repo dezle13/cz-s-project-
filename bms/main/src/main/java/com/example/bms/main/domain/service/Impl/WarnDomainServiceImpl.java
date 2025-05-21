@@ -40,6 +40,7 @@ public class WarnDomainServiceImpl implements WarnDomainService {
         warnDto.setCarId(carId);
         warnDto.setBatteryType(batteryType);
         warnDto.setWarnName(warnName);
+//        long start = System.currentTimeMillis();
         //处理预警信号和预警等级之间的关系
         double diffValue = 0d;
         //计算绝对差
@@ -49,7 +50,9 @@ public class WarnDomainServiceImpl implements WarnDomainService {
             diffValue = signal.get("Ix") - signal.get("Ii");
         }
         warnDto.setWarnLevel(getWarnLevel(diffValue,warnRule));
-
+//        long end = System.currentTimeMillis();
+//        long duration = end - start;
+//        System.out.println("查找区间耗时：" + duration + " ms");
         return warnDto;
     }
 

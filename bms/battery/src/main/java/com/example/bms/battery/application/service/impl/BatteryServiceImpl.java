@@ -99,7 +99,7 @@ public class BatteryServiceImpl implements BatteryService {
 //    @Scheduled(cron = "0 */1 * * * *")
     @Override
     public void scanSignals() {
-        final int  BATCH_SIZE   = 1000;
+        final int  BATCH_SIZE   = 10000;
         final String TOPIC        = "batteryTopic";
         final String TAG          = "signal";
         final String DESTINATION  = TOPIC + ":" + TAG;
@@ -110,7 +110,7 @@ public class BatteryServiceImpl implements BatteryService {
         List<WarnReq> buffer = new ArrayList<>();
         ThreadLocalRandom rnd = ThreadLocalRandom.current();
 
-        for (int i = 0; i < 1000; i++) {
+        for (int i = 0; i < 10000; i++) {
             // 1) 随机 carId 1-3
             int carId = rnd.nextInt(1, 4);
 

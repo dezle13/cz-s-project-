@@ -42,15 +42,16 @@ public class SignalConsumerListener implements RocketMQListener<List<WarnReq>> {
         // 处理接收到的消息
         long start = System.currentTimeMillis();
 
-        List<SignalDto> signalDtoList = message.parallelStream().map(warnVoConverter::toDto).collect(Collectors.toList());
-
-        List<WarnDto> warnDtoList =  warnService.processSignalDtoList(signalDtoList);
+//        List<SignalDto> signalDtoList = message.parallelStream().map(warnVoConverter::toDto).collect(Collectors.toList());
+//
+//        List<WarnDto> warnDtoList =  warnService.processSignalDtoList(signalDtoList);
         // 将 signalDtoList 拆分为并行流处理
 //        List<WarnDto> warnDtoList = signalDtoList.parallelStream()
 //                .map(warnService::processSignalDto)
 //                .collect(Collectors.toList());
-        List<WarnVo> warnVoList = warnDtoList.parallelStream().map(warnVoConverter::toVo).collect(Collectors.toList());
-
+//        List<WarnVo> warnVoList = warnDtoList.parallelStream().map(warnVoConverter::toVo).collect(Collectors.toList());
+        List<WarnDto> warnDtoList = message.parallelStream().map(warnVoConverter::toDto)
+                .flatMap(x -> warnService.processSignalDtoList(x).stream()).collect(Collectors.toList());
         long end = System.currentTimeMillis();
         long duration = end - start;
 
